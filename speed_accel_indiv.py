@@ -2,9 +2,6 @@ import math
 import matplotlib.pyplot as plt
 import statistics as st
 
-# -3, 2.25
-# -2.5, 2
-# -1.5, 1
 # BRAKE_BOUNDARY = -3
 # ACCEL_BOUNDARY = 2.25
 FEET_PER_MILE = 5280
@@ -98,6 +95,7 @@ def graph_speed_accel(speed, accel):
 # computes the number of acceleration and brake events per trajectory and adds it in data set
 # in the form of (avg acceleration of event, start time, end time)
 def compute_accel_events(data, variable, BRAKE_BOUNDARY, ACCEL_BOUNDARY):
+    ttl_evnt = 0
     if variable == 'x':
         idx_accel = 0
         num_accel_name = '# x_accel'
@@ -123,6 +121,7 @@ def compute_accel_events(data, variable, BRAKE_BOUNDARY, ACCEL_BOUNDARY):
             # event ends or prog ends...
             if event and (((a and pt < ACCEL_BOUNDARY) or (b and pt > BRAKE_BOUNDARY)) or index == len(accel)-1):
                 end_idx = index
+                ttl_evnt+=1
 
                 # checks if new event is beginning. if it jumps from -3 to 2.25 in one time stamp
                 if (a and pt <= BRAKE_BOUNDARY) or (b and pt >= ACCEL_BOUNDARY):
@@ -160,7 +159,7 @@ def compute_accel_events(data, variable, BRAKE_BOUNDARY, ACCEL_BOUNDARY):
                 running_count += 1
 
             index += 1
-
+    print("total events:", ttl_evnt)
 
 
 # computes percentage of total trajectory spent in acceleration and brake events
@@ -255,7 +254,6 @@ def intersection_conditional(data):
         num_A_and_B = 0
         num_A = len(event_As)
         num_B = len(event_Bs)
-        if num_A == 0: continue
 
         if num_A == 0 and num_B == 0:
             # neither event a or b... doesn't count for anything
@@ -271,7 +269,7 @@ def intersection_conditional(data):
         else:
             # there is both lane change and acceleration
             idx_B = 0
-            for i, event_A in enumerate(event_As):
+            for event_A in event_As:
                 lane_change_moment = event_A[2]
 
                 # if accel event within 1 sec before the lane change: count
@@ -289,6 +287,7 @@ def intersection_conditional(data):
             summed_conditional_A_given_B += num_A_and_B/num_B
             summed_occurrences_A_given_B+=1
             summed_occurrences_B_given_A+=1
+
     print(f'P(B|A): {summed_conditional_B_given_A/summed_occurrences_B_given_A*100:.2f}%') #should be 0.33
     print(f'P(A|B): {summed_conditional_A_given_B/summed_occurrences_A_given_B*100:.2f}%')
 
@@ -317,4 +316,4 @@ def main(data, BRAKE_BOUNDARY, ACCEL_BOUNDARY):
 
     if config['print']:
         print_speed_accel(data)
-        # print_lane_changes(data)
+        print_lane_changes(data)
