@@ -34,6 +34,7 @@ def organize_by_x(data):
 
 
 def get_car_leaders(data, by_car_by_timestamp):
+    # find a way to get end time stamp... dummy value in dictionary?
     for set in data:
         time = set['timestamp']
 
@@ -43,18 +44,54 @@ def get_car_leaders(data, by_car_by_timestamp):
             for idx, car in enumerate(values):
 
                 car_id = car[2]
-                if not car_id in by_car_by_timestamp:
-                    by_car_by_timestamp[car_id] = {'leader': []}
-                car_leader = by_car_by_timestamp[car_id]['leader']
 
                 if idx == len(values) - 1:
                     leader = None
                 else:
                     leader = values[idx + 1][2]
 
-                # no leader written or last leader not the same as this leader
-                if car_leader == [] or car_leader[-1][0] != leader:
-                    car_leader.append((leader, time))
+                if not by_car_by_timestamp.get(car_id):
+                    by_car_by_timestamp[car_id] = {'leader': []}
+
+                cur_car_leader = by_car_by_timestamp[car_id]['leader']
+                cur_car_leader.append([leader, time])
+
+
+def combine_car_leaders(by_car_by_timestamp):
+    cur_leader = None
+    start_time = None
+
+    for car, items in by_car_by_timestamp.items():
+        for idx, leader in enumerate(items['leader']):
+            lst = []
+            # if no values
+            if start_time == None:
+                cur_leader = leader[0]
+                start_time = leader[1]
+
+            # leader change, add prev leader tuple
+            elif leader[0] != cur_leader or idx == len(items['leader']) - 1:
+                lst.append((cur_leader, start_time, leader[1]))
+                cur_leader = leader[0]
+                start_time = leader[1]
+
+        items['leader'] = lst
+
+
+# store as car_id: (leader, distance, time)
+def calculate_follow_distance(data, by_car_by_timestamp):
+    for set in data:
+        time = set['timestamp']
+        for key, values in set['by car'].items():
+            # key, values in format lane, [(x pos, y pos, car id), ...]
+            for idx, value in enumerate(values[:-1]):
+                x = value[0]
+                car = value[2]
+                leader = values[idx+1][2]
+                leader_x = values[idx+1][0]
+                if not by_car_by_timestamp[car].get('follow distance'):
+                    by_car_by_timestamp[car]['follow distance'] = []
+                by_car_by_timestamp[car]['follow distance'].append((leader, leader_x-x))
 
 
 def create_newfile_dictionary(new_file, by_car_by_timestamp):
@@ -68,7 +105,10 @@ def main(data):
     }
 
     organize_by_car(data)
-    organize_by_x(data, by_car_by_timestamp)
+    organize_by_x(data)
+    get_car_leaders(data, by_car_by_timestamp)
+    combine_car_leaders(by_car_by_timestamp)
+    calculate_follow_distance(data, by_car_by_timestamp)
 
     if config['create_new_file']:
         with open('groundtruth_scene_1_130__cajoles_transformed_by_car.json', 'w') as new_file:
