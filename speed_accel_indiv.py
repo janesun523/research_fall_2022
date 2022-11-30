@@ -12,8 +12,10 @@ SECONDS_PER_HR = 3600
 # input
 # output
 def compute_speed_accel(data):
+    l = []
     for data_set in data:
         timestamp = data_set['timestamp']
+        l.append(timestamp)
         y_pos = data_set['y_position']
         x_pos = data_set['x_position']
         speed = [(0,0,0)]
@@ -49,7 +51,6 @@ def compute_speed_accel(data):
             x_accel_cur = delta_speed_x*(FEET_PER_MILE/SECONDS_PER_HR)/delta_time
 
             accel.append((x_accel_cur, y_accel_cur, cur_accel))
-
         data_set['speed'], data_set['accel'] = speed, accel
 
 
@@ -159,6 +160,7 @@ def compute_accel_events(data, variable, BRAKE_BOUNDARY, ACCEL_BOUNDARY):
                 running_count += 1
 
             index += 1
+        # print(data_set[num_accel_name])
     print("total events:", ttl_evnt)
 
 
@@ -310,7 +312,7 @@ def main(data, BRAKE_BOUNDARY, ACCEL_BOUNDARY):
     compute_accel_events(data, 'x', BRAKE_BOUNDARY, ACCEL_BOUNDARY)
     # percent_accel_brake_times(data)
     find_lane_changes(data)
-    intersection_conditional(data)
+    # intersection_conditional(data)
     # time_interval(data)
 
 

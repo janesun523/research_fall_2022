@@ -1,5 +1,5 @@
 import json
-
+import matplotlib.pyplot as plt
 
 def organize_by_car(data):
     lanes = {'E1': [0, 12], 'E2': [12, 24], 'E3': [24, 36], 'E4': [36, 48], 'E5': [48, 60],
@@ -80,7 +80,11 @@ def combine_car_leaders(by_car_by_timestamp):
 
 # store as car_id: (leader, distance, time)
 def calculate_follow_distance(data, by_car_by_timestamp):
+    counter = 0
     for set in data:
+        if counter%25 != 0:
+            counter += 1
+            continue
         time = set['timestamp']
         for key, values in set['by car'].items():
             # key, values in format lane, [(x pos, y pos, car id), ...]
@@ -91,7 +95,32 @@ def calculate_follow_distance(data, by_car_by_timestamp):
                 leader_x = values[idx+1][0]
                 if not by_car_by_timestamp[car].get('follow distance'):
                     by_car_by_timestamp[car]['follow distance'] = []
-                by_car_by_timestamp[car]['follow distance'].append((leader, leader_x-x))
+                by_car_by_timestamp[car]['follow distance'].append((leader, leader_x-x, time))
+        counter += 1
+
+
+def calculate_follow_distance_distribution(data, by_car_by_timestamp):
+    dic = {}
+    for car in by_car_by_timestamp:
+        if not by_car_by_timestamp[car].get('follow distance'): continue
+        follow_dist = by_car_by_timestamp[car]['follow distance']
+        # print(follow_dist)
+        for idx, tuple in enumerate(follow_dist[:-1]):
+            # only if same car
+            if tuple[0] != follow_dist[idx+1][0]: continue
+            diff = tuple[1] - follow_dist[idx+1][1]
+            diff = round(diff)
+            # print(diff)
+            dic[diff] = dic.get(diff, 0)+1
+
+    plt.rcParams.update({'font.size': 4})
+    sort_dict = dict(sorted(dic.items()))
+    names = list(sort_dict.keys())
+    values = list(sort_dict.values())
+
+    plt.bar(range(len(sort_dict)), values, tick_label=names)
+    plt.show()
+    ## lets say -2 to 3 is "noise" and actual change in follow distance is <-2 and >3
 
 
 def create_newfile_dictionary(new_file, by_car_by_timestamp):
@@ -100,7 +129,7 @@ def create_newfile_dictionary(new_file, by_car_by_timestamp):
 
 def main(data):
     by_car_by_timestamp = {}
-    config= {
+    config = {
         'create_new_file': 0
     }
 
@@ -109,9 +138,8 @@ def main(data):
     get_car_leaders(data, by_car_by_timestamp)
     combine_car_leaders(by_car_by_timestamp)
     calculate_follow_distance(data, by_car_by_timestamp)
+    calculate_follow_distance_distribution(data, by_car_by_timestamp)
 
     if config['create_new_file']:
         with open('groundtruth_scene_1_130__cajoles_transformed_by_car.json', 'w') as new_file:
             create_newfile_dictionary(new_file, by_car_by_timestamp)
-
-

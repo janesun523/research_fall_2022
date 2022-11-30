@@ -14,9 +14,9 @@ def main():
 
     # analyze speed and acceleration information for individual trajectories
     # per bound
-    # print("-3 to 2.25")
-    # speed_accel_indiv.main(data_by_car, -3, 2.25)
-    # print()
+    print("-3 to 2.25")
+    speed_accel_indiv.main(data_by_car, -3, 2.25)
+    print()
     #
     # print("-2.5 to 2")
     # speed_accel_indiv.main(data_by_car, -2.5, 2)
