@@ -1,6 +1,10 @@
 import json
 import matplotlib.pyplot as plt
+import statistics as st
 
+
+# extracts and organizes timestamp data into timestamp-based discrete lane categories with car
+# information (x-coordinate, y-coordinate, car id)
 def organize_by_car(data):
     lanes = {'E1': [0, 12], 'E2': [12, 24], 'E3': [24, 36], 'E4': [36, 48], 'E5': [48, 60],
              'E6': [60, 72], 'W1': [72, 84], 'W2': [84, 96], 'W3': [96, 108], 'W4': [108, 120],
@@ -11,7 +15,6 @@ def organize_by_car(data):
         pos = set['position']
         id = set['id']
         for i in range(len(id)):
-            # recalculate lane change ?
             x, y = pos[i]
             carid = list(id[i].values())[0]
             for key, ranges in lanes.items():
@@ -20,12 +23,12 @@ def organize_by_car(data):
                     by_car[key].append((x, y, carid))
                     break
         set['by car'] = by_car
-        # print(by_car)
 
+
+# organizes timestamp-based lane category data by x-coordinate of car
 def organize_by_x(data):
     # where each set is a timestamp
     for set in data:
-
         # where key is lane number, values are list of cars on lane
         for key, values in set['by car'].items():
 
@@ -33,8 +36,9 @@ def organize_by_x(data):
             values.sort(key = lambda x:x[0])
 
 
+# transforms data into dictionary of car trajectories and includes leader vehicle of each car at
+# each time stamp
 def get_car_leaders(data, by_car_by_timestamp):
-    # find a way to get end time stamp... dummy value in dictionary?
     for set in data:
         time = set['timestamp']
 
@@ -55,15 +59,21 @@ def get_car_leaders(data, by_car_by_timestamp):
 
                 cur_car_leader = by_car_by_timestamp[car_id]['leader']
                 cur_car_leader.append([leader, time])
+            # print(by_car_by_timestamp[car_id]['leader'])
 
 
+# combines information of individual car leaders and transforms data to be (car leader, beginning
+# time stamp, end time stamp)
 def combine_car_leaders(by_car_by_timestamp):
-    cur_leader = None
-    start_time = None
 
+    # for each car trajectory
     for car, items in by_car_by_timestamp.items():
+        cur_leader = None
+        start_time = None
+        lst = []
+
+        # for each leader w/in car trajectory
         for idx, leader in enumerate(items['leader']):
-            lst = []
             # if no values
             if start_time == None:
                 cur_leader = leader[0]
@@ -78,7 +88,8 @@ def combine_car_leaders(by_car_by_timestamp):
         items['leader'] = lst
 
 
-# store as car_id: (leader, distance, time)
+# calculates follow distance of cars from leaders, and store as car_id: (leader, distance, time)
+# finds follow distance every second to avoid taking up too much space
 def calculate_follow_distance(data, by_car_by_timestamp):
     counter = 0
     for set in data:
@@ -99,38 +110,94 @@ def calculate_follow_distance(data, by_car_by_timestamp):
         counter += 1
 
 
-def calculate_follow_distance_distribution(data, by_car_by_timestamp):
+# prints basic stats including distribution of follow distances
+def print_follow_distance_distribution(by_car_by_timestamp):
     dic = {}
+    lst=[]
     for car in by_car_by_timestamp:
         if not by_car_by_timestamp[car].get('follow distance'): continue
         follow_dist = by_car_by_timestamp[car]['follow distance']
-        # print(follow_dist)
-        for idx, tuple in enumerate(follow_dist[:-1]):
-            # only if same car
-            if tuple[0] != follow_dist[idx+1][0]: continue
-            diff = tuple[1] - follow_dist[idx+1][1]
-            diff = round(diff)
-            # print(diff)
-            dic[diff] = dic.get(diff, 0)+1
 
-    plt.rcParams.update({'font.size': 4})
+        for tuple in follow_dist:
+            dist = round(tuple[1]/50) * 50
+            dic[dist] = dic.get(dist,0)+1
+            lst.append(tuple[1])
+
+
+    print(f'across {len(by_car_by_timestamp)} trajectories, there was an:\n- average follow '
+          f'distance of {st.mean(lst):.2f} feet\n - maximum: {max(lst):.2f}\n - minimum: {min(lst):.2f}\n'
+          f' - standard deviation {st.stdev(lst):.2f}')
+
+    print("graphed information of distributions of follow distance: ")
+
+    # include values of follow distance that had 0 frequency so dictionary has keys of equal
+    # intervals
+    for i in range(min(dic.keys()), max(dic.keys())+1, 50):
+        dic[i] = dic.get(i,0)
+    plt.rcParams.update({'font.size': 6})
     sort_dict = dict(sorted(dic.items()))
     names = list(sort_dict.keys())
     values = list(sort_dict.values())
 
     plt.bar(range(len(sort_dict)), values, tick_label=names)
+    plt.ylabel("frequency")
+    plt.xlabel("follow distance (feet)")
+    plt.title("distribution of follow distances")
     plt.show()
-    ## lets say -2 to 3 is "noise" and actual change in follow distance is <-2 and >3
+    print()
 
 
+# prints basic stats including distribution of the change in follow distances
+def print_follow_distance_change_distribution(by_car_by_timestamp):
+    dic = {}
+    lst = []
+    for car in by_car_by_timestamp:
+        if not by_car_by_timestamp[car].get('follow distance'): continue
+        follow_dist = by_car_by_timestamp[car]['follow distance']
+        for idx, tuple in enumerate(follow_dist[:-1]):
+            # only if same car
+            if tuple[0] != follow_dist[idx+1][0]: continue
+            diff = tuple[1] - follow_dist[idx+1][1]
+            lst.append(diff)
+            diff = round(diff/2)*2
+            dic[diff] = dic.get(diff, 0)+1
+
+    # include values of follow distance change that had 0 frequency so dictionary has keys of
+    # equal intervals
+    for i in range(min(dic.keys()), max(dic.keys())+1, 2):
+        dic[i] = dic.get(i,0)
+
+    print(f'across {len(by_car_by_timestamp)} trajectories, there was an:\n- average follow '
+          f'distance change of {st.mean(lst):.2f} feet/sec\n - maximum: {max(lst):.2f}\n - '
+          f'minimum: {min(lst):.2f}\n - standard deviation {st.stdev(lst):.2f}')
+
+    print("graphed information of distributions of follow distance: ")
+
+    plt.rcParams.update({'font.size': 6})
+    sort_dict = dict(sorted(dic.items()))
+    names = list(sort_dict.keys())
+    values = list(sort_dict.values())
+
+    plt.bar(range(len(sort_dict)), values, tick_label=names)
+    plt.ylabel("frequency")
+    plt.xlabel("change in follow distance (feet)")
+    plt.title("distribution of change in follow distances")
+
+    plt.show()
+    print()
+
+
+# dumps data organized by trajectory into a new json file
 def create_newfile_dictionary(new_file, by_car_by_timestamp):
     new_file.write(json.dumps(by_car_by_timestamp, indent=4))
 
 
+# runs the functions in analysis_by_timestamp
 def main(data):
     by_car_by_timestamp = {}
     config = {
-        'create_new_file': 0
+        'create_new_file': 0,
+        'print': 1,
     }
 
     organize_by_car(data)
@@ -138,7 +205,10 @@ def main(data):
     get_car_leaders(data, by_car_by_timestamp)
     combine_car_leaders(by_car_by_timestamp)
     calculate_follow_distance(data, by_car_by_timestamp)
-    calculate_follow_distance_distribution(data, by_car_by_timestamp)
+
+    if config['print']:
+        print_follow_distance_distribution(by_car_by_timestamp)
+        print_follow_distance_change_distribution(by_car_by_timestamp)
 
     if config['create_new_file']:
         with open('groundtruth_scene_1_130__cajoles_transformed_by_car.json', 'w') as new_file:

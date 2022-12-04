@@ -16,15 +16,12 @@ def main():
     # per bound
     print("-3 to 2.25")
     speed_accel_indiv.main(data_by_car, -3, 2.25)
-    print()
     #
     # print("-2.5 to 2")
     # speed_accel_indiv.main(data_by_car, -2.5, 2)
-    # print()
     #
     # print("-1.5 to 1")
     # speed_accel_indiv.main(data_by_car, -1.5, 1)
-    # print()
 
     # analyze interactions between cars
     analysis_by_timestamp.main(data_by_timestamp)
